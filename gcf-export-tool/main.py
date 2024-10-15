@@ -76,7 +76,6 @@ async def transfer_to_archive_storage():
             },
             "gcs_data_sink": {
               "bucket_name": f"{dest_bucket_name}",
-              "path": f"{current_date}/",
             },
           },
         }
