@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 import os
-import asyncio
 from dotenv import load_dotenv
 from google.cloud import storage
 from google.cloud import storage_transfer
@@ -28,9 +27,9 @@ def create_bucket_if_not_exists():
       break
   else: 
     print(f"Bucket {dest_bucket_name} does not exist, creating new bucket")
+    bucket = storage_client.bucket(bucket_name=dest_bucket_name)
     bucket.storage_class = "COLDLINE"
-    bucket = storage_client.create_bucket(dest_bucket_name)
-    new_bucket = storage_client.create_bucket(bucket, location="europe-west1")
+    new_bucket = storage_client.create_bucket(bucket, project=project_id, location="europe-west1")
 
     print(
       f"Bucket {new_bucket.name} created in {new_bucket.location} with storage class {new_bucket.storage_class}"
@@ -39,11 +38,9 @@ def create_bucket_if_not_exists():
 # [ END create_bucket_if_not_exists ]
 
 # [ START transfer_to_archive_storage ]
-async def transfer_to_archive_storage():
+def transfer_to_archive_storage():
   create_bucket_if_not_exists()
-
   client = storage_transfer.StorageTransferServiceClient()
-  asyncClient = storage_transfer.StorageTransferServiceAsyncClient()
 
   transfer_job_name = os.getenv('TRANSFER_JOB_NAME')
   bucket_name = os.getenv('BUCKET_NAME')
@@ -51,15 +48,21 @@ async def transfer_to_archive_storage():
     raise ValueError("One or more required environment variables are missing.")
 
   # Check if the transfer job already exists
-  filter_string = f'{{"projectId":"{project_id}"}}'
+  filter_string = f'{{"projectId":"{project_id}", "jobNames":["transferJobs/{transfer_job_name}"]}}'
 
   list_transfer_jobs_request = storage_transfer.ListTransferJobsRequest(
           filter=filter_string,
   )
-  existing_jobs = await asyncClient.list_transfer_jobs(request=list_transfer_jobs_request)
+  existing_jobs = client.list_transfer_jobs(request=list_transfer_jobs_request)
 
-  if existing_jobs:
-    print("Existing transfer job found, starting transfer job.")
+  response = None
+
+  for response in existing_jobs:
+    response = response
+    print(response)
+  if response is not None:
+    if f"transferJobs/{transfer_job_name}" in response.name:
+      print("Existing transfer job found, starting transfer job.")
   else:
     print("No existing transfer job found, creating new transfer job.")
     create_transfer_job_request = storage_transfer.CreateTransferJobRequest( 
@@ -80,7 +83,7 @@ async def transfer_to_archive_storage():
       }
     )
 
-    create_response = await asyncClient.create_transfer_job(request=create_transfer_job_request)
+    create_response = client.create_transfer_job(request=create_transfer_job_request)
     print(f"Created transfer job: {create_response.name}")
 
   # Start the transfer job
@@ -91,12 +94,12 @@ async def transfer_to_archive_storage():
     }
   )
 
-  operation = await asyncClient.run_transfer_job(request=run_transfer_job_request)
+  operation = client.run_transfer_job(request=run_transfer_job_request)
   
   print("Transfer job started...")
   # Handle the response
-  response = await operation.result()
+  response = operation.result()
   print("Transfer job complete.", response)
 
 # [ END transfer_to_archive_storage ]
-asyncio.run(transfer_to_archive_storage())
+transfer_to_archive_storage()
