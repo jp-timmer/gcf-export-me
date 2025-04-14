@@ -1,4 +1,4 @@
 protobuf==5.28.2
 python-dotenv==1.0.1
 google-cloud-storage==2.19.0
-google-cloud-storage-transfer==1.12.0
+google-cloud-storage-transfer==1.16.1
