@@ -1,5 +1,5 @@
 google_api_python_client==2.169.0
 oauth2client==4.1.3
-protobuf==5.28.2
+protobuf==5.29.4
 python-dotenv==1.0.1
 google-cloud-storage-transfer==1.16.1
